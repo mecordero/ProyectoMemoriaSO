@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 		*c++ = '0';
 	}
 	
-	for (c = memoria; *c != NULL; c++){
+	for (c = memoria; *c != '\0'; c++){
 		printf("%c", *c);
 	}
 	
