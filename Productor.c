@@ -11,11 +11,64 @@ char caracterActual = 48;
 
 void *vidaHilo(void *atributosHilo)
 {
+	char * memoria, *c;
+	key_t key = ftok("shmfile", 65);
+	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
+	printf("El id generado es %d\n", shm_id);
+	memoria = shmat(shm_id, NULL, 0);
+	for (c = memoria; *c != NULL; c++){
+		printf("%c", *c);
+	}
 	struct AtributosHilo *atributos = (struct AtributosHilo *)atributosHilo;
-	struct AtributosHilo atributosCopia = {atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo};	
-	printf("Nace hilo %c con lineas %d\n\n", atributosCopia.id, atributosCopia.lineas);	
+	struct AtributosHilo atributosCopia = {atributos->nombre, atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo};	
+	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributosCopia.nombre, atributosCopia.lineas, atributosCopia.tiempo);	
+	//busca si existe la memoria suficiente
+	int inicio;
+	int contadorLinea;
+	int contadorEspacio;
+	printf("algoritmo %d\n" ,atributosCopia.algoritmo );
+	switch(atributosCopia.algoritmo){
+		case 1: //First-Fit
+			printf("SWITCH\n");
+			inicio = 0;
+			contadorLinea = 0;
+			contadorEspacio = 0;
+			for (c = memoria; *c != NULL; c++){
+				printf("FOR");
+				if(*c == '0'){
+					if(contadorEspacio == 0)
+						inicio = contadorLinea;
+					contadorEspacio ++;
+					if(contadorEspacio >= atributosCopia.lineas){
+						//ya encontro suficiente espacio
+						c = memoria;
+						c+= inicio;
+						int inscritos;
+						for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
+							*c++ = atributosCopia.nombre;
+							printf("Pos %d es del hilo %c", inicio+inscritos, atributosCopia.nombre);
+						}
+						
+						return NULL;
+					}
+				}else{
+					contadorEspacio = 0;
+				}
+				contadorLinea++;
+			}
+			//Nunca encontro espacio
+			printf("El hilo %c, no encuentra memoria y muere", atributosCopia.nombre);
+			return;
+		//case 2: //Best-Fit
+			//break;
+		//case 3: //Worst-Fit
+		
+	}
+	
+	
+	
 	sleep(atributosCopia.tiempo);
-	printf("Muere hilo %c con lineas %d\n\n", atributosCopia.id, atributosCopia.lineas);
+	printf("Muere hilo %c\n\n", atributosCopia.id);
 	return NULL;
 }
 
@@ -36,13 +89,22 @@ char nuevoChar()
 
 int main(int argc, char **argv)
 {
+	
+	char * memoria, *c;
+	key_t key = ftok("shmfile", 65);
+	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
+	printf("El id generado es %d\n", shm_id);
+	memoria = shmat(shm_id, NULL, 0);
+	for (c = memoria; *c != NULL; c++){
+		printf("%c", *c);
+	}
+	
 	int algoritmo;
 	int shm_id_AH;
-	int shm_id;
 
-	printf("Ingrese el numero del algoritmo que desea utilizar para la distribucion de memoria\n");
-	printf("1. Best-Fit\n");
-	printf("2. First-Fit\n");
+	printf("\nIngrese el numero del algoritmo que desea utilizar para la distribucion de memoria\n");
+	printf("1. First-Fit\n");
+	printf("2. Best-Fit\n");
 	printf("3. Worst-Fit\n");
 	scanf("%d", &algoritmo);
 	while(algoritmo < 1 || algoritmo > 3){
@@ -55,9 +117,7 @@ int main(int argc, char **argv)
 	hilos = shmat(shm_id_AH, NULL, 0);
 
 
-	key_t key = ftok("shmfile", 65);
-	shm_id = shmget(key, 0, 0666|IPC_CREAT);
-	printf("El id generado es %d\n", shm_id);
+	
 	srand(time(0));
 	int cont_ID = 0;// contador de hilos
 
@@ -82,6 +142,7 @@ int main(int argc, char **argv)
 		//pthread_join(hiloNuevo, NULL);		
 		sleep(tiempoEspera);
 		cont_ID++;
+		break;
 	}
 	return 0;
 }
