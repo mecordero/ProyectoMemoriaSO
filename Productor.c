@@ -12,7 +12,9 @@ char caracterActual = 48;
 
 void *vidaHilo(void *atributosHilo)
 {
-	
+	struct ListaEspacios * l, lis;
+	l = &lis;
+	l->primero = NULL;
 	char * memoria, *c;
 	key_t key = ftok("shmfile", 65);
 	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
@@ -23,14 +25,12 @@ void *vidaHilo(void *atributosHilo)
 	struct AtributosHilo atributosCopia = {atributos->nombre, atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo, atributos->mutex};	
 	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributosCopia.nombre, atributosCopia.lineas, atributosCopia.tiempo);	
 	//busca si existe la memoria suficiente
-	int inicio;
-	int contadorLinea;
-	int contadorEspacio;
+	int inicio = 0;
+	int contadorLinea = 0;
+	int contadorEspacio = 0;
+	
 	switch(atributosCopia.algoritmo){
 		case 1: //First-Fit
-			inicio = 0;
-			contadorLinea = 0;
-			contadorEspacio = 0;
 			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
 			sem_wait(&atributosCopia.mutex);
 			printf("El hilo %c entra a la region critica\n", atributosCopia.nombre);
@@ -65,13 +65,57 @@ void *vidaHilo(void *atributosHilo)
 			//Nunca encontro espacio
 			printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
 			return NULL;
-		//case 2: //Best-Fit
-			//break;
+		case 2: //Best-Fit;
+			vaciarLista(l);
+			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
+			sem_wait(&atributosCopia.mutex);
+			printf("El hilo %c entra a la region critica\n", atributosCopia.nombre);
+			for (c = memoria; *c != '\0'; c++){
+				if(*c == '0'){
+					if(contadorEspacio == 0)
+						inicio = contadorLinea;
+					contadorEspacio ++;
+				}else{
+					if(contadorEspacio > 0){
+						agregarEspacio(inicio, contadorEspacio, l);
+						imprimirEspacios(l);
+						contadorEspacio = 0;
+					}
+				}
+				contadorLinea++;
+			}
+			if(contadorEspacio > 0){
+				agregarEspacio(inicio, contadorEspacio, l);
+				imprimirEspacios(l);
+			}			
+			//termina de buscar todos los espacios disponibles
+			int bestInicio = getBestFit(l, atributosCopia.lineas);
+			if(bestInicio != -1){
+				inicio = bestInicio;
+				c = memoria;
+				c+= bestInicio;
+				int inscritos;
+				for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
+					*c++ = atributosCopia.nombre;
+				}
+						
+				for (c = memoria; *c != '\0'; c++){
+					printf("%c", *c);
+				}
+				printf("\n");
+				sem_post(&atributosCopia.mutex);
+				printf("El hilo %c se encuentra en ejecucion\n", atributosCopia.nombre);
+			}else{
+				printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
+				return NULL;
+			}
+			
+			break;
 		//case 3: //Worst-Fit
 		
 	}
 	
-	final:
+final:
 	//ejecuta	
 	sleep(atributosCopia.tiempo);
 	

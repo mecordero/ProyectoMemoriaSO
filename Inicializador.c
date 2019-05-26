@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 	shmget(key_AH, sizeof(struct AtributosHilo ) * MAX_HILOS, 0666|IPC_CREAT); //crea memoria para guardar cada hilo y sus atributos
 	printf("Ingrese la cantidad de lineas que desea para la memoria: ");
 	scanf("%d", &lineas);
-	shm_id = shmget(key, lineas, 0666|IPC_CREAT);
+	shm_id = shmget(key, lineas+1, 0666|IPC_CREAT);
 	memoria = shmat(shm_id, NULL, 0);
 	
 	int i;
@@ -24,6 +24,8 @@ int main(int argc, char **argv)
 	for (i = 0; i < lineas; i++){
 		*c++ = '0';
 	}
+	*c = '\0';
+
 	
 	for (c = memoria; *c != '\0'; c++){
 		printf("%c", *c);
