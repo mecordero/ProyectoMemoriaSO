@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <pthread.h>
+#include <semaphore.h> 
 #ifndef definiciones_h
 #define definiciones_h
 
@@ -15,6 +16,7 @@ struct AtributosHilo
 	int lineas;
 	int tiempo;
 	int tipo;
+	sem_t mutex;
     pthread_t thread;
 };
 

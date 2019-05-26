@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include "definiciones.h"
+#include <semaphore.h> 
 
 char caracterActual = 48;
 
@@ -19,7 +20,7 @@ void *vidaHilo(void *atributosHilo)
 	memoria = shmat(shm_id, NULL, 0);
 	
 	struct AtributosHilo *atributos = (struct AtributosHilo *)atributosHilo;
-	struct AtributosHilo atributosCopia = {atributos->nombre, atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo};	
+	struct AtributosHilo atributosCopia = {atributos->nombre, atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo, atributos->mutex};	
 	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributosCopia.nombre, atributosCopia.lineas, atributosCopia.tiempo);	
 	//busca si existe la memoria suficiente
 	int inicio;
@@ -30,6 +31,9 @@ void *vidaHilo(void *atributosHilo)
 			inicio = 0;
 			contadorLinea = 0;
 			contadorEspacio = 0;
+			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
+			sem_wait(&atributosCopia.mutex);
+			printf("El hilo %c entra a la region critica\n", atributosCopia.nombre);
 			for (c = memoria; *c != '\0'; c++){
 				if(*c == '0'){
 					if(contadorEspacio == 0)
@@ -43,12 +47,13 @@ void *vidaHilo(void *atributosHilo)
 						for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
 							*c++ = atributosCopia.nombre;
 						}
-						/*
+						
 						for (c = memoria; *c != '\0'; c++){
 							printf("%c", *c);
 						}
-						printf("\n");*/
-						
+						printf("\n");
+						sem_post(&atributosCopia.mutex);
+						printf("El hilo %c se encuentra en ejecucion\n", atributosCopia.nombre);
 						goto final;
 					}
 				}else{
@@ -58,7 +63,7 @@ void *vidaHilo(void *atributosHilo)
 			}
 			
 			//Nunca encontro espacio
-			printf("El hilo %c, no encuentra memoria y muere", atributosCopia.nombre);
+			printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
 			return NULL;
 		//case 2: //Best-Fit
 			//break;
@@ -67,10 +72,25 @@ void *vidaHilo(void *atributosHilo)
 	}
 	
 	final:
-	printf("Va a hacer el sleep\n");
-	
+	//ejecuta	
 	sleep(atributosCopia.tiempo);
-	printf("Muere hilo %c\n\n", atributosCopia.id);
+	
+	//se desinscribe de la memoria
+	int desinscritos;
+	c = memoria;
+	c+= inicio;
+	sem_wait(&atributosCopia.mutex);	
+	for (desinscritos = 0; desinscritos < atributosCopia.lineas; desinscritos++){
+		*c++ = '0';
+	}
+	for (c = memoria; *c != '\0'; c++){
+		printf("%c", *c);
+	}
+	sem_post(&atributosCopia.mutex);
+	printf("\n");
+	
+	//muere
+	printf("Muere hilo %c\n", atributosCopia.nombre);
 	
 	return NULL;
 }
@@ -92,14 +112,15 @@ char nuevoChar()
 
 int main(int argc, char **argv)
 {
-	char * memoria, *c;
-	key_t key = ftok("shmfile", 65);
-	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
+	//char * memoria, *c;
+	//key_t key = ftok("shmfile", 65);
+	//int shm_id = shmget(key, 0, 0666|IPC_CREAT);
 	//printf("El id generado es %d\n", shm_id);
-	memoria = shmat(shm_id, NULL, 0);
+	//memoria = shmat(shm_id, NULL, 0);
 	
 	int algoritmo;
 	int shm_id_AH;
+	sem_t mutex;
 	
 	printf("Ingrese el numero del algoritmo que desea utilizar para la distribucion de memoria\n");
 	printf("1. First-Fit\n");
@@ -129,9 +150,10 @@ int main(int argc, char **argv)
 		int tiempoEspera = (rand() % (60 - 30 + 1)) + 30;
 		//printf("Lineas: %d\n", lineasHilo);
 		//printf("Tiempo: %d\n", tiempoHilo);
-		//printf("TiempoEspera: %d\n\n", tiempoEspera);	
+		printf("TiempoEspera: %d\n\n", tiempoEspera);	
 
 		char ch = nuevoChar();
+		sem_init(&mutex, 0, 1); 
 		
 		hilos[cont_ID].nombre = ch;
 		hilos[cont_ID].id = cont_ID;
@@ -139,6 +161,7 @@ int main(int argc, char **argv)
 		hilos[cont_ID].lineas = lineasHilo;
 		hilos[cont_ID].tiempo = tiempoHilo;
 		hilos[cont_ID].tipo = activo;
+		hilos[cont_ID].mutex = mutex;
 	
 		pthread_create(&hilos[cont_ID].thread, NULL, vidaHilo, &hilos[cont_ID]);
 		/*
@@ -150,7 +173,6 @@ int main(int argc, char **argv)
 		//pthread_join(hiloNuevo, NULL);		
 		sleep(tiempoEspera);
 		cont_ID++;
-		break;
 	}
 	
 	return 0;
