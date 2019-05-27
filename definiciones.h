@@ -79,6 +79,24 @@ int getBestFit(struct ListaEspacios * lista, int necesario){
 	return inicioEspacio;
 }
 
+int getWorstFit(struct ListaEspacios * lista, int necesario){
+	struct Espacio * actual = lista->primero;
+	int inicioEspacio = -1;
+	int maxSobra = -1;
+	while(actual != NULL){
+		if(actual->tamano >= necesario){
+			int sobra = actual->tamano - necesario;
+			if(sobra > maxSobra){
+				maxSobra = sobra;
+				inicioEspacio = actual->inicio;
+			}
+		}
+		actual = actual->siguiente;
+	}
+	
+	return inicioEspacio;
+}
+
 void vaciarLista(struct ListaEspacios * lista){
 	struct Espacio * actual = lista->primero;
 	lista->primero = NULL;

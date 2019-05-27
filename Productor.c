@@ -66,6 +66,7 @@ void *vidaHilo(void *atributosHilo)
 			printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
 			return NULL;
 		case 2: //Best-Fit;
+		case 3: //Worst-Fit
 			vaciarLista(l);
 			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
 			sem_wait(&atributosCopia.mutex);
@@ -89,11 +90,13 @@ void *vidaHilo(void *atributosHilo)
 				imprimirEspacios(l);
 			}			
 			//termina de buscar todos los espacios disponibles
-			int bestInicio = getBestFit(l, atributosCopia.lineas);
-			if(bestInicio != -1){
-				inicio = bestInicio;
+			if(atributosCopia.algoritmo == 2)
+				inicio = getBestFit(l, atributosCopia.lineas);
+			else
+				inicio = getWorstFit(l, atributosCopia.lineas);
+			if(inicio != -1){
 				c = memoria;
-				c+= bestInicio;
+				c+= inicio;
 				int inscritos;
 				for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
 					*c++ = atributosCopia.nombre;
@@ -109,10 +112,7 @@ void *vidaHilo(void *atributosHilo)
 				printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
 				return NULL;
 			}
-			
-			break;
-		//case 3: //Worst-Fit
-		
+					
 	}
 	
 final:
