@@ -10,50 +10,67 @@
 
 char caracterActual = 48;
 
+sem_t sem_log;
+ 
+
 void *vidaHilo(void *atributosHilo)
 {
 	struct ListaEspacios * l, lis;
 	l = &lis;
 	l->primero = NULL;
 	char * memoria, *c;
-	key_t key = ftok("shmfile", 65);
+	key_t key = ftok("/shmfile", 65);
 	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
 	//printf("El id generado es %d\n", shm_id);
 	memoria = shmat(shm_id, NULL, 0);
+
+	char bitacora[500];
 	
 	struct AtributosHilo *atributos = (struct AtributosHilo *)atributosHilo;
-	struct AtributosHilo atributosCopia = {atributos->nombre, atributos->id, atributos->algoritmo, atributos->lineas, atributos->tiempo, atributos->tipo, atributos->mutex};	
-	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributosCopia.nombre, atributosCopia.lineas, atributosCopia.tiempo);	
+	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributos->nombre, atributos->lineas, atributos->tiempo);	
+	sprintf(bitacora, "Nace hilo %c, necesita %d lineas y va a durar %d segundos\n", atributos->nombre, atributos->lineas, atributos->tiempo);	
+	fileLog(bitacora, &sem_log);
 	//busca si existe la memoria suficiente
 	int inicio = 0;
 	int contadorLinea = 0;
 	int contadorEspacio = 0;
 	
-	switch(atributosCopia.algoritmo){
+	switch(atributos->algoritmo){
 		case 1: //First-Fit
-			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
-			sem_wait(&atributosCopia.mutex);
-			printf("El hilo %c entra a la region critica\n", atributosCopia.nombre);
+			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributos->nombre);
+			sprintf(bitacora,"El hilo %c esta bloqueado esperando utilizar la memoria\n", atributos->nombre);
+			fileLog(bitacora, &sem_log);
+
+			atributos->tipo = bloqueado;
+			sem_wait(atributos->mutex);
+			atributos->tipo = activo;
+			printf("El hilo %c entra a la region critica\n", atributos->nombre);
+			sprintf(bitacora,"El hilo %c entra a la region critica\n", atributos->nombre);
+			fileLog(bitacora, &sem_log);
+
 			for (c = memoria; *c != '\0'; c++){
 				if(*c == '0'){
 					if(contadorEspacio == 0)
 						inicio = contadorLinea;
 					contadorEspacio ++;
-					if(contadorEspacio >= atributosCopia.lineas){
+					if(contadorEspacio >= atributos->lineas){
 						//ya encontro suficiente espacio
 						c = memoria;
 						c+= inicio;
 						int inscritos;
-						for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
-							*c++ = atributosCopia.nombre;
+						for (inscritos = 0; inscritos < atributos->lineas; inscritos++){
+							*c++ = atributos->nombre;
 						}
 						
 						for (c = memoria; *c != '\0'; c++){
 							printf("%c", *c);
 						}
 						printf("\n");
-						sem_post(&atributosCopia.mutex);
-						printf("El hilo %c se encuentra en ejecucion\n", atributosCopia.nombre);
+						sem_post(atributos->mutex);
+						atributos->tipo = ejecutando;
+						printf("El hilo %c se encuentra en ejecucion\n", atributos->nombre);
+						sprintf(bitacora,"El hilo %c se encuentra en ejecucion\n", atributos->nombre);
+						fileLog(bitacora, &sem_log);
 						goto final;
 					}
 				}else{
@@ -63,14 +80,24 @@ void *vidaHilo(void *atributosHilo)
 			}
 			
 			//Nunca encontro espacio
-			printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
+			atributos->tipo = finalizado;
+			sem_post(atributos->mutex);
+			printf("El hilo %c, no encuentra memoria y muere\n", atributos->nombre);
+			sprintf(bitacora,"El hilo %c, no encuentra memoria y muere\n", atributos->nombre);
+			fileLog(bitacora, &sem_log);
 			return NULL;
 		case 2: //Best-Fit;
 		case 3: //Worst-Fit
 			vaciarLista(l);
-			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributosCopia.nombre);
-			sem_wait(&atributosCopia.mutex);
-			printf("El hilo %c entra a la region critica\n", atributosCopia.nombre);
+			printf("El hilo %c esta bloqueado esperando utilizar la memoria\n", atributos->nombre);
+			sprintf(bitacora,"El hilo %c esta bloqueado esperando utilizar la memoria\n", atributos->nombre);
+			fileLog(bitacora, &sem_log);
+			atributos->tipo = bloqueado;
+			sem_wait(atributos->mutex);
+			atributos->tipo = activo;
+			printf("El hilo %c entra a la region critica\n", atributos->nombre);
+			sprintf(bitacora,"El hilo %c entra a la region critica\n", atributos->nombre);
+			fileLog(bitacora, &sem_log);
 			for (c = memoria; *c != '\0'; c++){
 				if(*c == '0'){
 					if(contadorEspacio == 0)
@@ -90,26 +117,33 @@ void *vidaHilo(void *atributosHilo)
 				imprimirEspacios(l);
 			}			
 			//termina de buscar todos los espacios disponibles
-			if(atributosCopia.algoritmo == 2)
-				inicio = getBestFit(l, atributosCopia.lineas);
+			if(atributos->algoritmo == 2)
+				inicio = getBestFit(l, atributos->lineas);
 			else
-				inicio = getWorstFit(l, atributosCopia.lineas);
+				inicio = getWorstFit(l, atributos->lineas);
 			if(inicio != -1){
 				c = memoria;
 				c+= inicio;
 				int inscritos;
-				for (inscritos = 0; inscritos < atributosCopia.lineas; inscritos++){
-					*c++ = atributosCopia.nombre;
+				for (inscritos = 0; inscritos < atributos->lineas; inscritos++){
+					*c++ = atributos->nombre;
 				}
 						
 				for (c = memoria; *c != '\0'; c++){
 					printf("%c", *c);
 				}
 				printf("\n");
-				sem_post(&atributosCopia.mutex);
-				printf("El hilo %c se encuentra en ejecucion\n", atributosCopia.nombre);
+				sem_post(atributos->mutex);
+				atributos->tipo = ejecutando;
+				printf("El hilo %c se encuentra en ejecucion\n", atributos->nombre);
+				sprintf(bitacora,"El hilo %c se encuentra en ejecucion\n", atributos->nombre);
+			    fileLog(bitacora, &sem_log);
 			}else{
-				printf("El hilo %c, no encuentra memoria y muere\n", atributosCopia.nombre);
+				printf("El hilo %c, no encuentra memoria y muere\n", atributos->nombre);
+				sprintf(bitacora,"El hilo %c, no encuentra memoria y muere\n", atributos->nombre);
+				fileLog(bitacora, &sem_log);
+				atributos->tipo = finalizado;
+				sem_post(atributos->mutex);
 				return NULL;
 			}
 					
@@ -117,24 +151,29 @@ void *vidaHilo(void *atributosHilo)
 	
 final:
 	//ejecuta	
-	sleep(atributosCopia.tiempo);
+	sleep(atributos->tiempo);
 	
 	//se desinscribe de la memoria
 	int desinscritos;
 	c = memoria;
 	c+= inicio;
-	sem_wait(&atributosCopia.mutex);	
-	for (desinscritos = 0; desinscritos < atributosCopia.lineas; desinscritos++){
+	atributos->tipo = bloqueado;
+	sem_wait(atributos->mutex);	
+	atributos->tipo = activo;
+	for (desinscritos = 0; desinscritos < atributos->lineas; desinscritos++){
 		*c++ = '0';
 	}
 	for (c = memoria; *c != '\0'; c++){
 		printf("%c", *c);
 	}
-	sem_post(&atributosCopia.mutex);
+	sem_post(atributos->mutex);
 	printf("\n");
 	
 	//muere
-	printf("Muere hilo %c\n", atributosCopia.nombre);
+	atributos->tipo = finalizado;
+	printf("Muere hilo %c\n", atributos->nombre);
+	sprintf(bitacora,"Muere hilo %c\n", atributos->nombre);
+	fileLog(bitacora, &sem_log);
 	
 	return NULL;
 }
@@ -164,7 +203,6 @@ int main(int argc, char **argv)
 	
 	int algoritmo;
 	int shm_id_AH;
-	sem_t mutex;
 	
 	printf("Ingrese el numero del algoritmo que desea utilizar para la distribucion de memoria\n");
 	printf("1. First-Fit\n");
@@ -178,7 +216,7 @@ int main(int argc, char **argv)
 		scanf("%d", &algoritmo);
 	}
 	
-	key_t key_AH = ftok("/tmp",'S');
+	key_t key_AH = ftok("/tmp",50);
 	shm_id_AH = shmget(key_AH, sizeof(struct AtributosHilo ) * MAX_HILOS, 0666|IPC_CREAT);
 	//printf("El SEGUNDO id generado es %d\n", shm_id_AH);
 	struct AtributosHilo *hilos;
@@ -187,6 +225,11 @@ int main(int argc, char **argv)
 	srand(time(0));
 	int cont_ID = 0;// contador de hilos
 
+	sem_t mutex;
+	sem_init(&mutex, 0, 1); 
+	sem_init(&sem_log, 0, 1);
+	cleanLog(&sem_log);
+
 	while(1){
 	
 		int lineasHilo = (rand() % 10) + 1;
@@ -194,10 +237,9 @@ int main(int argc, char **argv)
 		int tiempoEspera = (rand() % (60 - 30 + 1)) + 30;
 		//printf("Lineas: %d\n", lineasHilo);
 		//printf("Tiempo: %d\n", tiempoHilo);
-		printf("TiempoEspera: %d\n\n", tiempoEspera);	
+		printf("Tiempo de Espera para crear otro hilo: %d\n\n", tiempoEspera);	
 
 		char ch = nuevoChar();
-		sem_init(&mutex, 0, 1); 
 		
 		hilos[cont_ID].nombre = ch;
 		hilos[cont_ID].id = cont_ID;
@@ -205,7 +247,7 @@ int main(int argc, char **argv)
 		hilos[cont_ID].lineas = lineasHilo;
 		hilos[cont_ID].tiempo = tiempoHilo;
 		hilos[cont_ID].tipo = activo;
-		hilos[cont_ID].mutex = mutex;
+		hilos[cont_ID].mutex = &mutex;  
 	
 		pthread_create(&hilos[cont_ID].thread, NULL, vidaHilo, &hilos[cont_ID]);
 		/*

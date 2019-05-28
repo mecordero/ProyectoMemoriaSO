@@ -7,7 +7,7 @@
 
 #define MAX_HILOS 10000
 
-enum tipoEstado {activo = 1, ejecutando = 2, bloqueado = 3};
+enum tipoEstado {activo = 1, ejecutando = 2, bloqueado = 3, finalizado = 4};
 
 struct AtributosHilo
 {
@@ -17,7 +17,7 @@ struct AtributosHilo
 	int lineas;
 	int tiempo;
 	int tipo;
-	sem_t mutex;
+	sem_t * mutex;
     pthread_t thread;
 };
 
@@ -107,5 +107,23 @@ void vaciarLista(struct ListaEspacios * lista){
 	}
 }
 
+void fileLog(char * msg, sem_t * mutex) {
+	sem_wait(mutex);
+	FILE *filePointer ; 
+	filePointer = fopen("bitacora.txt", "a");
+	fprintf(filePointer, "%s", msg);
+	fclose(filePointer);
+	sem_post(mutex);
+}
+
+void cleanLog( sem_t * mutex) {
+	sem_wait(mutex);
+	FILE *filePointer ; 
+	filePointer = fopen("bitacora.txt", "w+");
+	fprintf(filePointer,"Sistemas Operativos: II Proyecto\n");
+	fprintf(filePointer,"------------------------------------\n");
+	fclose(filePointer);
+	sem_post(mutex);
+}
 
 #endif

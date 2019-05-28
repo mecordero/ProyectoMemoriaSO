@@ -1,0 +1,11 @@
+Sistemas Operativos: II Proyecto
+------------------------------------
+Nace hilo 1, necesita 10 lineas y va a durar 58 segundos
+El hilo 1 esta bloqueado esperando utilizar la memoria
+El hilo 1 entra a la region critica
+El hilo 1 se encuentra en ejecucion
+Nace hilo 2, necesita 7 lineas y va a durar 42 segundos
+El hilo 2 esta bloqueado esperando utilizar la memoria
+El hilo 2 entra a la region critica
+El hilo 2 se encuentra en ejecucion
+Muere hilo 1
