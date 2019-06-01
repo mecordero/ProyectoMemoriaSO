@@ -43,13 +43,9 @@ int main(int argc, char **argv)
 	*c = '\0';
 
 	
-	for (c = memoria; *c != '\0'; c++){
-		printf("%c", *c);
-	}
 	
 	printf("\nLa cantidad ingresada de lineas es %d\n", lineas);
-	printf("El id generado es %d\n", shm_id);
-	printf("El id generado es %d\n", shm_id_AH);
+
 	return 0;
 }
 

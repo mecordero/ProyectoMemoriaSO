@@ -27,7 +27,7 @@ void *vidaHilo(void *atributosHilo)
 	char bitacora[500];
 	
 	struct AtributosHilo *atributos = (struct AtributosHilo *)atributosHilo;
-	printf("\nNace hilo %c, necesita %d lineas y va a durar %d segundos\n\n", atributos->nombre, atributos->lineas, atributos->tiempo);	
+	printf("Nace hilo %c, necesita %d lineas y va a durar %d segundos\n", atributos->nombre, atributos->lineas, atributos->tiempo);	
 	sprintf(bitacora, "Nace hilo %c, necesita %d lineas y va a durar %d segundos\n", atributos->nombre, atributos->lineas, atributos->tiempo);	
 	fileLog(bitacora, &sem_log);
 	//busca si existe la memoria suficiente
@@ -62,10 +62,7 @@ void *vidaHilo(void *atributosHilo)
 							*c++ = atributos->nombre;
 						}
 						
-						for (c = memoria; *c != '\0'; c++){
-							printf("%c", *c);
-						}
-						printf("\n");
+						
 						sem_post(atributos->mutex);
 						atributos->tipo = ejecutando;
 						printf("El hilo %c se encuentra en ejecucion\n", atributos->nombre);
@@ -106,7 +103,6 @@ void *vidaHilo(void *atributosHilo)
 				}else{
 					if(contadorEspacio > 0){
 						agregarEspacio(inicio, contadorEspacio, l);
-						imprimirEspacios(l);
 						contadorEspacio = 0;
 					}
 				}
@@ -114,7 +110,6 @@ void *vidaHilo(void *atributosHilo)
 			}
 			if(contadorEspacio > 0){
 				agregarEspacio(inicio, contadorEspacio, l);
-				imprimirEspacios(l);
 			}			
 			//termina de buscar todos los espacios disponibles
 			if(atributos->algoritmo == 2)
@@ -129,10 +124,6 @@ void *vidaHilo(void *atributosHilo)
 					*c++ = atributos->nombre;
 				}
 						
-				for (c = memoria; *c != '\0'; c++){
-					printf("%c", *c);
-				}
-				printf("\n");
 				sem_post(atributos->mutex);
 				atributos->tipo = ejecutando;
 				printf("El hilo %c se encuentra en ejecucion\n", atributos->nombre);
@@ -162,9 +153,6 @@ final:
 	atributos->tipo = activo;
 	for (desinscritos = 0; desinscritos < atributos->lineas; desinscritos++){
 		*c++ = '0';
-	}
-	for (c = memoria; *c != '\0'; c++){
-		printf("%c", *c);
 	}
 	sem_post(atributos->mutex);
 	printf("\n");
@@ -235,9 +223,7 @@ int main(int argc, char **argv)
 		int lineasHilo = (rand() % 10) + 1;
 		int tiempoHilo = (rand() % (60 - 20 + 1)) + 20;
 		int tiempoEspera = (rand() % (60 - 30 + 1)) + 30;
-		//printf("Lineas: %d\n", lineasHilo);
-		//printf("Tiempo: %d\n", tiempoHilo);
-		printf("Tiempo de Espera para crear otro hilo: %d\n\n", tiempoEspera);	
+		printf("Tiempo de Espera para crear otro hilo: %d\n", tiempoEspera);	
 
 		char ch = nuevoChar();
 		
@@ -250,11 +236,6 @@ int main(int argc, char **argv)
 		hilos[cont_ID].mutex = &mutex;  
 	
 		pthread_create(&hilos[cont_ID].thread, NULL, vidaHilo, &hilos[cont_ID]);
-		/*
-		for (c = memoria; *c != '\0'; c++){
-			printf("%c", *c);
-		}
-		printf("\n");*/
 		
 		//pthread_join(hiloNuevo, NULL);		
 		sleep(tiempoEspera);
