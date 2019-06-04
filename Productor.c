@@ -21,7 +21,6 @@ void *vidaHilo(void *atributosHilo)
 	char * memoria, *c;
 	key_t key = ftok("/shmfile", 65);
 	int shm_id = shmget(key, 0, 0666|IPC_CREAT);
-	//printf("El id generado es %d\n", shm_id);
 	memoria = shmat(shm_id, NULL, 0);
 
 	char bitacora[500];
@@ -34,6 +33,8 @@ void *vidaHilo(void *atributosHilo)
 	int inicio = 0;
 	int contadorLinea = 0;
 	int contadorEspacio = 0;
+	FILE *fptr;
+	char chEjecucion;
 	
 	switch(atributos->algoritmo){
 		case 1: //First-Fit
@@ -43,6 +44,22 @@ void *vidaHilo(void *atributosHilo)
 
 			atributos->tipo = bloqueado;
 			sem_wait(atributos->mutex);
+			//Antes de pedir la memoria se fija si tiene que seguir
+			fptr = fopen("ejecucion.txt","r");
+			if(fptr == NULL)
+			{
+			  printf("Error leyendo archivo!");
+			  return 0;
+			}
+			chEjecucion = getc(fptr);
+			if(chEjecucion == '0'){
+				printf("Muere el hilo %c debido a finalizacion\n", atributos->nombre);
+				sleep(30);
+				fclose(fptr);
+				return 0;
+			}
+			fclose(fptr);
+			//Puede continuar
 			atributos->tipo = activo;
 			printf("El hilo %c entra a la region critica\n", atributos->nombre);
 			sprintf(bitacora,"El hilo %c entra a la region critica\n", atributos->nombre);
@@ -91,6 +108,22 @@ void *vidaHilo(void *atributosHilo)
 			fileLog(bitacora, &sem_log);
 			atributos->tipo = bloqueado;
 			sem_wait(atributos->mutex);
+			//Antes de pedir la memoria se fija si tiene que seguir
+			fptr = fopen("ejecucion.txt","r");
+			if(fptr == NULL)
+			{
+			  printf("Error leyendo archivo!");
+			  return 0;
+			}
+			chEjecucion = getc(fptr);
+			if(chEjecucion == '0'){
+				printf("Muere el hilo %c debido a finalizacion\n", atributos->nombre);
+				sleep(30);
+				fclose(fptr);
+				return 0;
+			}
+			fclose(fptr);
+			//Puede continuar
 			atributos->tipo = activo;
 			printf("El hilo %c entra a la region critica\n", atributos->nombre);
 			sprintf(bitacora,"El hilo %c entra a la region critica\n", atributos->nombre);
@@ -150,6 +183,22 @@ final:
 	c+= inicio;
 	atributos->tipo = bloqueado;
 	sem_wait(atributos->mutex);	
+	//Antes de pedir la memoria se fija si tiene que seguir
+	fptr = fopen("ejecucion.txt","r");
+	if(fptr == NULL)
+	{
+	  printf("Error leyendo archivo!");
+	  return 0;
+	}
+	chEjecucion = getc(fptr);
+	if(chEjecucion == '0'){
+		printf("Muere el hilo %c debido a finalizacion\n", atributos->nombre);
+		sleep(30);
+		fclose(fptr);
+		return 0;
+	}
+	fclose(fptr);
+	//Puede continuar
 	atributos->tipo = activo;
 	for (desinscritos = 0; desinscritos < atributos->lineas; desinscritos++){
 		*c++ = '0';
@@ -219,6 +268,22 @@ int main(int argc, char **argv)
 	cleanLog(&sem_log);
 
 	while(1){
+		//Antes de crear un hilo se fija si tiene que seguir
+		FILE *fptr;
+		fptr = fopen("ejecucion.txt","r");
+		if(fptr == NULL)
+		{
+		  printf("Error leyendo archivo!");
+		  return 1;
+		}
+		char chEjecucion = getc(fptr);
+		if(chEjecucion == '0'){
+			printf("Ya no se van a producir mas hilos\n");
+			fclose(fptr);
+			return 0;
+		}
+		fclose(fptr);
+		
 	
 		int lineasHilo = (rand() % 10) + 1;
 		int tiempoHilo = (rand() % (60 - 20 + 1)) + 20;

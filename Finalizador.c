@@ -10,6 +10,17 @@
 
 int main(int argc, char **argv)
 {
+	FILE *fptr;
+	
+    fptr = fopen("ejecucion.txt","w");
+    if(fptr == NULL)
+    {
+      printf("Error creando archivo!");
+      return 1;
+    }
+    fprintf(fptr,"0");
+    fclose(fptr);
+	
 	int shm_id;
 	key_t key = ftok("/tmp/shmfile", 65);
 	shm_id = shmget(key, 0, 0666|IPC_CREAT);

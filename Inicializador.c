@@ -9,6 +9,17 @@ int main(int argc, char **argv)
 	int shm_id;
 	char * memoria, *c;
 	int shm_id_AH; //AH será el arreglo que contenga los hilos con su información
+	FILE *fptr;
+	
+    fptr = fopen("ejecucion.txt","w");
+    if(fptr == NULL)
+    {
+      printf("Error creando archivo!");
+      return 1;
+    }
+    fprintf(fptr,"1");
+    fclose(fptr);
+ 
 
 	key_t key = ftok("/tmp/shmfile", 65);
 	key_t key_AH = ftok("/tmp",50);
